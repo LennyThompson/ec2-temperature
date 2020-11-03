@@ -1,28 +1,26 @@
-
 import json
 import logging
 import sys
 from threading import Timer
 
 import greengrasssdk
-from random import (
-    seed,
-    gauss
-)
 from datetime import datetime
 
+from random import (seed, gauss)
+
 # Set up logging to stdout
-#TODO - add logging to file or dynamodb
+# TODO - add logging to file or dynamodb
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
-#Attach the client to the 'io-data' which is the greengrass core
+# Attach the client to the 'io-data' which is the greengrass core
 
 client = greengrasssdk.client("iot-data")
 
 PAUSED = False
 seed(1)
+
 
 def send_device_temperature():
     global PAUSED
@@ -32,7 +30,7 @@ def send_device_temperature():
             client.publish(
                 topic='machine/temperature',
                 queueFullPolicy="AllOrException",
-                payload=json.dump({ "CPU" : temperature, "message" : "Running", "time": "{}".format(datetime.now()) })
+                payload=json.dumps({"CPU": temperature, "message": "Running", "time": "{}".format(datetime.now())})
             )
         else:
             logger.info("Send temperature paused")
@@ -40,11 +38,15 @@ def send_device_temperature():
     except Exception as exc:
         logger.error('Error publishing temperature: ' + repr(exc))
 
-    Timer(10, send_device_temperature()).start()
+    Timer(10, send_device_temperature).start()
+
+
+send_device_temperature()
 
 
 def function_handler(event, context):
     global PAUSED
+    logger.info("Event received: " + json.dumps(event, indent=2))
     if event['send'] == 1:
         if PAUSED:
             PAUSED = False
@@ -52,7 +54,7 @@ def function_handler(event, context):
             client.publish(
                 topic='machine/temperature',
                 queueFullPolicy="AllOrException",
-                payload=json.dump({ "message" : "Resume", "time": "{}".format(datetime.now()) })
+                payload=json.dumps({"message": "Resume", "time": "{}".format(datetime.now())})
             )
         else:
             logger.info("Device is transmitting")
@@ -63,7 +65,7 @@ def function_handler(event, context):
             client.publish(
                 topic='machine/temperature',
                 queueFullPolicy="AllOrException",
-                payload=json.dump({ "message" : "Suspend", "time": "{}".format(datetime.now()) })
+                payload=json.dumps({"message": "Suspend", "time": "{}".format(datetime.now())})
             )
         else:
             logger.info("Device is already paused")
